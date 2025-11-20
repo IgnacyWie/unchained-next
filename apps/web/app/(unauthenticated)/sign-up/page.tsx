@@ -21,7 +21,7 @@ export default function RegisterPage() {
     });
 
     if (response.ok) {
-      router.push("/login"); // Redirect to login after success
+      router.push("/sign-in"); // Redirect to login after success
     } else {
       const text = await response.text();
       setError(text);
@@ -29,7 +29,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+    <div className="flex w-full items-center justify-center">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
         <h2 className="text-2xl font-bold text-center text-gray-900">Create Account</h2>
 
@@ -78,7 +78,7 @@ export default function RegisterPage() {
 
         <p className="text-sm text-center text-gray-600">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link href="/sign-in" className="text-blue-600 hover:underline">
             Sign In
           </Link>
         </p>

@@ -16,6 +16,7 @@
     "@repo/db": "workspace:*",
     "@repo/design-system": "workspace:*",
     "bcryptjs": "^3.0.3",
+    "lucide-react": "^0.548.0",
     "next": "16.0.3",
     "next-auth": "^4.24.13",
     "react": "19.2.0",

@@ -30,7 +30,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+    <div className="flex w-full items-center justify-center">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
         <h2 className="text-2xl font-bold text-center text-gray-900">Sign In</h2>
 
@@ -69,7 +69,7 @@ export default function LoginPage() {
 
         <p className="text-sm text-center text-gray-600">
           Don't have an account?{" "}
-          <Link href="/register" className="text-blue-600 hover:underline">
+          <Link href="/sign-up" className="text-blue-600 hover:underline">
             Register
           </Link>
         </p>
