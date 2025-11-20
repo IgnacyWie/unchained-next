@@ -24,7 +24,7 @@ const AuthLayout = async ({ children }: AuthLayoutProps) => {
   }
 
   return (
-    <div className="relative flex h-dvh w-full flex-col items-center justify-center overflow-hidden bg-zinc-950">
+    <div className="relative flex h-dvh w-full flex-col items-center justify-center overflow-hidden bg-gray-50 dark:bg-zinc-950">
 
       {/* --- BACKGROUND LAYERS --- */}
 
@@ -42,7 +42,7 @@ const AuthLayout = async ({ children }: AuthLayoutProps) => {
 
       {/* --- ABSOLUTE UI ELEMENTS (Corners) --- */}
 
-      <div className="absolute top-8 left-8 z-20 flex items-center font-medium text-lg text-white">
+      <div className="absolute top-8 left-8 z-20 flex items-center font-medium text-lg text-black dark:text-white">
         <TriangleIcon className="mr-2 h-6 w-6" />
         Unchained Next
       </div>
@@ -51,7 +51,7 @@ const AuthLayout = async ({ children }: AuthLayoutProps) => {
         <ModeToggle />
       </div>
 
-      <div className="absolute bottom-8 right-8 z-20 hidden max-w-md text-white lg:block">
+      <div className="absolute bottom-8 right-8 z-20 hidden max-w-md text-black dark:text-white lg:block">
         <blockquote className="space-y-2">
           <p className="text-lg text-right">
             &ldquo;I was sick of paying per-user fees for simple auth and databases. This stack saved me thousands in yearly SaaS costs and countless hours of DevOps headaches.&rdquo;
