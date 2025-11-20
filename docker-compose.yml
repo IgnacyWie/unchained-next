@@ -10,6 +10,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  mailpit:
+    image: axllent/mailpit
+    container_name: unchained_mailpit
+    restart: always
+    ports:
+      - "8025:8025" # The Web UI to view emails
+      - "1025:1025" # The SMTP port the app connects to
+    networks:
+      - unchained_network
+
   web:
     build:
       context: .
@@ -22,6 +32,11 @@ services:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
     depends_on:
       - postgres
+      - mailpit
 
 volumes:
   postgres_data:
+
+networks:
+  unchained_network:
+    driver: bridge
