@@ -7,7 +7,9 @@
 [](https://turbo.build/)
 [](https://www.prisma.io/)
 
-**Unchained Next** is an open-source playbook and boilerplate designed to replace the "Vercel + Clerk + Neon" tax with a robust, self-hosted alternative. We provide the configuration, manifests, and guides to run a modern full-stack app using industry-standard open-source tools.
+**Unchained Next** is an open-source playbook and boilerplate designed to replace the "Vercel + Clerk + Neon" tax with a robust, self-hosted alternative. We provide configuration, manifests, and guides to run a modern full-stack app using industry-standard open-source tools.
+
+---
 
 ## 🚀 Why Unchained?
 
@@ -21,25 +23,27 @@ The "Modern Stack" has become a subscription trap. You shouldn't have to pay per
 | **Architecture** | Scattered Microservices            | **Unified Monorepo (Turborepo)**     |
 | **Cost**         | Scales with traffic ($$$)          | **Scales with hardware ($)**         |
 
-## 🛠️ The Stack & Architecture
+---
+
+## 🛠️ Stack & Architecture
 
 We stripped away the complexity of external auth services in favor of a pure architecture that you own completely, organized via **Turborepo**.
 
-- **Monorepo Tooling:** [Turborepo](https://turbo.build/) (High-performance build system).
-- **Application:** [Next.js](https://nextjs.org/) (Located in `apps/web`).
-- **Authentication:** [NextAuth.js](https://next-auth.js.org/) with **Credentials Provider**.
-- **ORM:** [Prisma](https://www.prisma.io/) (Located in `packages/db`).
-- **Database:** [PostgreSQL](https://www.postgresql.org/).
-- **Infrastructure:** Docker Compose (Local) & Kubernetes (Production).
+- **Monorepo Tooling:** [Turborepo](https://turbo.build/)
+- **Application:** [Next.js](https://nextjs.org/) (`apps/web`)
+- **Authentication:** [NextAuth.js](https://next-auth.js.org/) with **Credentials Provider**
+- **ORM:** [Prisma](https://www.prisma.io/) (`packages/db`)
+- **Database:** [PostgreSQL](https://www.postgresql.org/)
+- **Infrastructure:** Docker Compose (Local) & Helm / Kubernetes (Production)
 
-### How it works
-
-Instead of redirecting users to a third-party login page, **Unchained Next** handles auth internally:
+### How it Works
 
 1. User submits email/password to the Next.js API.
 2. **NextAuth** verifies credentials against the database via **Prisma**.
 3. Session tokens are issued without external dependencies.
 4. All database schemas are managed centrally in `packages/db`.
+
+---
 
 ## 📂 Project Structure
 
@@ -50,118 +54,121 @@ unchained-next/
 ├── packages/
 │   ├── db/                   # Prisma Schema, Migrations & Client
 │   ├── design-system/        # Shared UI Components
-│   ├── eslint-config/        # Shared Linting rules
+│   ├── eslint-config/        # Shared Linting Rules
 │   └── typescript-config/    # Shared TS Configs
+├── docker/                   # Docker related files
 ├── ops/
-│   └── k8s/                  # Kubernetes manifests
+│   └── helm/                 # Helm Charts for Production Deployment
 ├── templates/                # Environment variable templates (.tpl)
 ├── setup-env.sh              # Script to generate .env files from templates
-├── docker-compose.yml        # Local development setup
-└── turbo.json                # Turborepo configuration
+├── docker-compose.yml        # Local development
+├── docker-compose.preprod.yml# Pre-production setup
+├── LICENSE
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── README.md
+└── turbo.json
 ```
 
-## ⚡ Quick Start (Local Development)
+---
 
-Get the entire stack running locally in minutes.
+## ⚡ Quick Start (Local Development)
 
 ### Prerequisites
 
 - Docker & Docker Compose
 - Node.js 18+ & **pnpm**
 
-### 1\. Clone the repo
+### 1. Clone the Repo
 
 ```bash
 git clone https://github.com/yourusername/unchained-next.git
 cd unchained-next
 ```
 
-### 2\. Environment Setup
-
-We use a script to generate `.env` files from the `templates/` directory to ensure consistency across the monorepo.
+### 2. Generate Environment Files
 
 ```bash
 chmod +x setup-env.sh
 ./setup-env.sh
 ```
 
-### 3\. Install Dependencies
+This will generate `.env` files based on the templates in `templates/`.
+
+### 3. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 4\. Spin up the Infrastructure
-
-Start the PostgreSQL container (defined in `docker-compose.yml`).
+### 4. Spin up Local Infrastructure
 
 ```bash
 docker-compose up -d
 ```
 
-### 5\. Initialize Database
-
-Push the Prisma schema from `packages/db` to your local Postgres instance.
+### 5. Initialize Database
 
 ```bash
-# Run the db push script defined in package.json
 pnpm db:push
 ```
 
-### 6\. Run the App
+### 6. Run the App
 
 ```bash
 pnpm dev
 ```
 
-Your app is now running at `http://localhost:3000`.
+Visit `http://localhost:3000` to see your app.
+
+---
+
+## 🚢 Deploy to Kubernetes with Helm
+
+For production, we use Helm charts stored in `ops/helm`.
+
+```bash
+cd ops/helm
+helm install CHANGE_RELEASE_TAG ./unchained-web -f ./unchained-web/values.yaml
+```
+
+Replace `CHANGE_RELEASE_TAG` with your release name.
+
+> Note: `values.yaml` are generated automatically with the help of the `/setup-env.sh` script
 
 ---
 
 ## 🗺️ Roadmap & Todos
 
-We are actively working on standardizing the deployment pipeline. Help is welcome\!
-
 ### Authentication
 
-- [ ] Integrate WebAuthn (Passkeys) as an additional provider in NextAuth.js
+- [ ] Integrate WebAuthn (Passkeys) in NextAuth.js
 
 ### Configuration & Standards
 
-- [x] Migrate the `\ops\k8s` to a helm chart, for easier deployment
-- [x] **Standardize `IMAGE_NAME`:** Update `.env` templates and `k8s` manifests to use a consistent variable for the Docker image name/tag to prevent mismatches during build/deploy.
+- [x] Standardize `IMAGE_NAME` across `.env` templates and Helm charts.
 
 ### Documentation
 
-- [ ] **K8s Registry Auth:** Add documentation/templates for creating `imagePullSecrets` (Docker Login) within the Kubernetes cluster (for private registries).
+- [ ] Add documentation for creating `imagePullSecrets` in Kubernetes for private registries.
+- [ ] Add documentation for creating ingress and cert-manager in Kubernetes.
 
 ### Automation (CI/CD)
 
-- [x] **GitHub Actions:** Create a standard workflow (`.github/workflows/deploy.yml`) that:
-  1. Builds the Next.js Docker image (using Turbo cache).
-  2. Pushes to GHCR or Docker Hub.
-  3. Triggers a rollout restart on the Kubernetes cluster.
-- [ ] **GitHub Actions:** Create a workflow that automatically runs the prisma db push command on the cluster database
+- [x] GitHub Actions workflow for building, caching, and deploying Docker images.
+- [ ] GitHub Actions workflow for automatically running `prisma db push` on production DB.
 
-## 🚢 Production Deployment (Kubernetes)
-
-We believe in **"Write once, deploy anywhere."**
-
-Inside `ops/k8s`, you will find standard manifests to deploy this stack to any Kubernetes provider.
-
-1. **Build** your application image.
-2. **Push** to your registry.
-3. **Apply** the manifests in `ops/k8s`.
-   _(Tip: Use the templates in `templates/k8s._.tpl` to generate your production configs)\*
+---
 
 ## 🤝 Contributing
 
-We are building the ultimate "SaaS-Free" playbook. Contributions are welcome\!
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes
+4. Open a Pull Request
 
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes.
-4. Open a Pull Request.
+---
 
 ## 📄 License
 
@@ -169,4 +176,4 @@ Distributed under the MIT License.
 
 ---
 
-### 🌟 Star this repo if you want to break free from SaaS subscriptions\
+### 🌟 Star this repo if you want to break free from SaaS subscriptions
