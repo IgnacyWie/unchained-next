@@ -1,0 +1,69 @@
+name: Type Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**.ts"
+      - "**.tsx"
+      - "**.js"
+      - "**.jsx"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "**/tsconfig.json"
+  pull_request:
+    branches:
+      - "**" # Run on PRs to any branch
+
+jobs:
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run TypeScript compiler
+        run: pnpm exec tsc --noEmit --pretty
+
+      - name: Type check summary
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "### ✅ TypeScript Check Passed" >> $GITHUB_STEP_SUMMARY
+            echo "No type errors found!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ TypeScript Check Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Please fix the type errors above." >> $GITHUB_STEP_SUMMARY
+          fi
