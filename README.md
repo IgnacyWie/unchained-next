@@ -1,11 +1,15 @@
+Here is the updated **README.md**. I have integrated the **Turborepo/Monorepo structure** from your screenshot, updated the installation steps to utilize the `setup-env.sh` script and templates, and maintained the architecture description (NextAuth + Prisma) and Roadmap as requested.
+
+---
+
 # ⛓️‍💥 Unchained Next
 
 **Break the SaaS shackles. Deploy Next.js on your own terms.**
 
 [](https://opensource.org/licenses/MIT)
 [](https://nextjs.org/)
-[](https://www.docker.com/)
-[](https://zitadel.com/)
+[](https://turbo.build/)
+[](https://www.prisma.io/)
 
 **Unchained Next** is an open-source playbook and boilerplate designed to replace the "Vercel + Clerk + Neon" tax with a robust, self-hosted alternative. We provide the configuration, manifests, and guides to run a modern full-stack app using industry-standard open-source tools.
 
@@ -13,33 +17,51 @@
 
 The "Modern Stack" has become a subscription trap. You shouldn't have to pay per-user fees just to authenticate users or store rows in a database.
 
-| Feature      | The "SaaS" Way (Vercel/Clerk/Neon) | The Unchained Way                         |
-| :----------- | :--------------------------------- | :---------------------------------------- |
-| **Hosting**  | Serverless Pricing (Unpredictable) | **Docker / K8s (Fixed Cost VPS)**         |
-| **Auth**     | $ per Monthly Active User          | **Unlimited Users (Self-hosted Zitadel)** |
-| **Database** | Pricing based on compute hours     | **Standard PostgreSQL Container**         |
-| **Data**     | Locked in proprietary clouds       | **100% Data Sovereignty**                 |
-| **Cost**     | Scales with traffic ($$$)          | **Scales with hardware ($)**              |
+| Feature          | The "SaaS" Way (Vercel/Clerk/Neon) | The Unchained Way                    |
+| :--------------- | :--------------------------------- | :----------------------------------- |
+| **Hosting**      | Serverless Pricing (Unpredictable) | **Docker / K8s (Fixed Cost VPS)**    |
+| **Auth**         | $ per Monthly Active User          | **NextAuth + Prisma (Free & Owned)** |
+| **Database**     | Pricing based on compute hours     | **Standard PostgreSQL Container**    |
+| **Architecture** | Scattered Microservices            | **Unified Monorepo (Turborepo)**     |
+| **Cost**         | Scales with traffic ($$$)          | **Scales with hardware ($)**         |
 
-## 🛠️ The Stack
+## 🛠️ The Stack & Architecture
 
-- **Application:** [Next.js](https://nextjs.org/) (Containerized, standalone output)
-- **Authentication:** [Zitadel](https://zitadel.com/) (Open source identity management - The Clerk alternative)
-- **Database:** [PostgreSQL](https://www.postgresql.org/)
-- **Reverse Proxy:** [Traefik](https://traefik.io/) or Nginx
-- **Infrastructure:** Docker Compose (Local) & Kubernetes (Production)
+We stripped away the complexity of external auth services in favor of a pure architecture that you own completely, organized via **Turborepo**.
+
+- **Monorepo Tooling:** [Turborepo](https://turbo.build/) (High-performance build system).
+- **Application:** [Next.js](https://nextjs.org/) (Located in `apps/web`).
+- **Authentication:** [NextAuth.js](https://next-auth.js.org/) with **Credentials Provider**.
+- **ORM:** [Prisma](https://www.prisma.io/) (Located in `packages/db`).
+- **Database:** [PostgreSQL](https://www.postgresql.org/).
+- **Infrastructure:** Docker Compose (Local) & Kubernetes (Production).
+
+### How it works
+
+Instead of redirecting users to a third-party login page, **Unchained Next** handles auth internally:
+
+1. User submits email/password to the Next.js API.
+2. **NextAuth** verifies credentials against the database via **Prisma**.
+3. Session tokens are issued without external dependencies.
+4. All database schemas are managed centrally in `packages/db`.
 
 ## 📂 Project Structure
 
 ```text
 unchained-next/
-├── app/                 # The Next.js Application
+├── apps/
+│   └── web/                  # The Main Next.js Application
+├── packages/
+│   ├── db/                   # Prisma Schema, Migrations & Client
+│   ├── design-system/        # Shared UI Components
+│   ├── eslint-config/        # Shared Linting rules
+│   └── typescript-config/    # Shared TS Configs
 ├── ops/
-│   ├── docker-compose/  # Local development setup
-│   │   ├── docker-compose.yml
-│   │   └── zitadel-init/
-│   └── k8s/             # Kubernetes manifests / Helm charts
-└── README.md
+│   └── k8s/                  # Kubernetes manifests
+├── templates/                # Environment variable templates (.tpl)
+├── setup-env.sh              # Script to generate .env files from templates
+├── docker-compose.yml        # Local development setup
+└── turbo.json                # Turborepo configuration
 ```
 
 ## ⚡ Quick Start (Local Development)
@@ -48,8 +70,8 @@ Get the entire stack running locally in minutes.
 
 ### Prerequisites
 
-  * Docker & Docker Compose
-  * Node.js 18+ (for local app development)
+- Docker & Docker Compose
+- Node.js 18+ & **pnpm**
 
 ### 1\. Clone the repo
 
@@ -60,48 +82,76 @@ cd unchained-next
 
 ### 2\. Environment Setup
 
-Copy the example environment variables.
+We use a script to generate `.env` files from the `templates/` directory to ensure consistency across the monorepo.
 
 ```bash
-cp .env.example .env
+chmod +x setup-env.sh
+./setup-env.sh
 ```
 
-### 3\. Spin up the Infrastructure
-
-This command starts Postgres and Zitadel.
+### 3\. Install Dependencies
 
 ```bash
-cd ops/docker-compose
+pnpm install
+```
+
+### 4\. Spin up the Infrastructure
+
+Start the PostgreSQL container (defined in `docker-compose.yml`).
+
+```bash
 docker-compose up -d
 ```
 
-_Note: Zitadel takes a moment to initialize the first time._
+### 5\. Initialize Database
 
-### 4\. Configure Next.js
-
-Once Zitadel is running (usually `http://localhost:8080`), create an Instance, grab your `Client ID` and `Client Secret`, and update your root `.env` file.
-
-### 5\. Run the App
+Push the Prisma schema from `packages/db` to your local Postgres instance.
 
 ```bash
-cd ../../app
-pnpm install
-pnpm run dev
+# Run the db push script defined in package.json
+pnpm db:push
 ```
 
-Your app is now running at `http://localhost:3000`, authenticated against your local Zitadel instance, backed by your local Postgres.
+### 6\. Run the App
+
+```bash
+pnpm dev
+```
+
+Your app is now running at `http://localhost:3000`.
+
+---
+
+## 🗺️ Roadmap & Todos
+
+We are actively working on standardizing the deployment pipeline. Help is welcome\!
+
+### Configuration & Standards
+
+- [ ] **Standardize `IMAGE_NAME`:** Update `.env` templates and `k8s` manifests to use a consistent variable for the Docker image name/tag to prevent mismatches during build/deploy.
+
+### Documentation
+
+- [ ] **K8s Registry Auth:** Add documentation/templates for creating `imagePullSecrets` (Docker Login) within the Kubernetes cluster (for private registries).
+- [ ] **Secret Management:** Add a guide on mapping generated `.env` files to Kubernetes Secrets.
+
+### Automation (CI/CD)
+
+- [ ] **GitHub Actions:** Create a standard workflow (`.github/workflows/deploy.yml`) that:
+  1. Builds the Next.js Docker image (using Turbo cache).
+  2. Pushes to GHCR or Docker Hub.
+  3. Triggers a rollout restart on the Kubernetes cluster.
 
 ## 🚢 Production Deployment (Kubernetes)
 
 We believe in **"Write once, deploy anywhere."**
 
-Inside the `ops/k8s` folder, you will find standard manifests to deploy this stack to any Kubernetes provider (DigitalOcean, Hetzner, AWS EKS, or a home lab).
+Inside `ops/k8s`, you will find standard manifests to deploy this stack to any Kubernetes provider.
 
-1. **Build** your Next.js Docker image.
+1. **Build** your application image.
 2. **Push** to your registry.
 3. **Apply** the manifests in `ops/k8s`.
-
-_(Detailed K8s guide coming soon in the /docs folder)_
+   _(Tip: Use the templates in `templates/k8s._.tpl` to generate your production configs)\*
 
 ## 🤝 Contributing
 
@@ -114,7 +164,7 @@ We are building the ultimate "SaaS-Free" playbook. Contributions are welcome\!
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License.
 
 -----
 
