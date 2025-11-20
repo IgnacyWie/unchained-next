@@ -1,8 +1,0 @@
-users:
-  admin:
-    displayname: "Admin User"
-    password: "$argon2id$v=19$m=65536,t=3,p=4$CT/0/..hash..$" # Hash for password "password"
-    email: admin@example.com
-    groups:
-      - admins
-      - dev
