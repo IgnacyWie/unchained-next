@@ -1,40 +1,75 @@
 import { ModeToggle } from "@repo/design-system/components/mode-toggle";
-import { Suspense } from 'react'
+import { Suspense } from 'react';
 import { TriangleIcon } from "lucide-react";
 import type { ReactNode } from "react";
+
+// 1. Add these imports for server-side session checking
+import { redirect } from 'next/navigation';
+import { getServerSession } from "next-auth";
+import { authOptions } from '@/lib/auth';
 
 type AuthLayoutProps = {
   readonly children: ReactNode;
 };
 
-const AuthLayout = ({ children }: AuthLayoutProps) => (
-  <div className="container relative grid h-dvh flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
-    <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-      <div className="absolute inset-0 bg-muted" />
-      <div className="relative z-20 flex items-center font-medium text-lg text-primary">
+// 2. Make the component async
+const AuthLayout = async ({ children }: AuthLayoutProps) => {
+
+  // 3. Check the session
+  const session = await getServerSession(authOptions);
+
+  // 4. If user exists, redirect them to home (or dashboard)
+  if (session?.user) {
+    redirect("/");
+  }
+
+  return (
+    <div className="relative flex h-dvh w-full flex-col items-center justify-center overflow-hidden bg-zinc-950">
+
+      {/* --- BACKGROUND LAYERS --- */}
+
+      {/* 1. Gradient Mesh Orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -left-[10%] -top-[10%] h-[50vw] w-[50vw] rounded-full bg-purple-700/20 blur-[120px] filter" />
+        <div className="absolute -right-[10%] -bottom-[20%] h-[50vw] w-[50vw] rounded-full bg-indigo-700/20 blur-[120px] filter" />
+        <div className="absolute top-1/2 left-1/2 h-[40vw] w-[40vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-600/10 blur-[100px] filter" />
+      </div>
+
+      {/* 2. Technical Grid Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_center,#00000000,transparent)]" />
+      </div>
+
+      {/* --- ABSOLUTE UI ELEMENTS (Corners) --- */}
+
+      <div className="absolute top-8 left-8 z-20 flex items-center font-medium text-lg text-white">
         <TriangleIcon className="mr-2 h-6 w-6" />
         Unchained Next
       </div>
-      <div className="absolute top-4 right-4">
+
+      <div className="absolute top-8 right-8 z-20">
         <ModeToggle />
       </div>
-      <div className="relative z-20 mt-auto text-primary">
+
+      <div className="absolute bottom-8 right-8 z-20 hidden max-w-md text-white lg:block">
         <blockquote className="space-y-2">
-          <p className="text-lg">
-            &ldquo;I was sick of paying per-user fees for simple auth and databases. This stack saved me thousands in yearly SaaS costs and countless hours of DevOps headaches. It’s the freedom I was looking for.&rdquo;
+          <p className="text-lg text-right">
+            &ldquo;I was sick of paying per-user fees for simple auth and databases. This stack saved me thousands in yearly SaaS costs and countless hours of DevOps headaches.&rdquo;
           </p>
-          <footer className="text-sm">Ignacy Wielogórski</footer>
+          <footer className="text-sm opacity-80 text-right">Ignacy Wielogórski</footer>
         </blockquote>
       </div>
-    </div>
-    <div className="lg:p-8">
-      <div className="mx-auto flex w-full max-w-[400px] flex-col justify-center space-y-6">
+
+      {/* --- CENTER CONTENT --- */}
+
+      <div className="relative z-30 w-full max-w-[600px] px-4">
         <Suspense>
           {children}
         </Suspense>
       </div>
+
     </div>
-  </div>
-);
+  );
+};
 
 export default AuthLayout;
