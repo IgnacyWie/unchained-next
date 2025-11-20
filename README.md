@@ -1,7 +1,3 @@
-Here is the updated **README.md**. I have integrated the **Turborepo/Monorepo structure** from your screenshot, updated the installation steps to utilize the `setup-env.sh` script and templates, and maintained the architecture description (NextAuth + Prisma) and Roadmap as requested.
-
----
-
 # ⛓️‍💥 Unchained Next
 
 **Break the SaaS shackles. Deploy Next.js on your own terms.**
@@ -157,15 +153,15 @@ Inside `ops/k8s`, you will find standard manifests to deploy this stack to any K
 
 We are building the ultimate "SaaS-Free" playbook. Contributions are welcome\!
 
-1.  Fork the repository.
-2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
-3.  Commit your changes.
-4.  Open a Pull Request.
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes.
+4. Open a Pull Request.
 
 ## 📄 License
 
 Distributed under the MIT License.
 
------
+---
 
-### 🌟 Star this repo if you want to break free from SaaS subscriptions\!
+### 🌟 Star this repo if you want to break free from SaaS subscriptions\
