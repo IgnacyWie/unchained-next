@@ -23,7 +23,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => (
           <p className="text-lg">
             &ldquo;I was sick of paying per-user fees for simple auth and databases. This stack saved me thousands in yearly SaaS costs and countless hours of DevOps headaches. It’s the freedom I was looking for.&rdquo;
           </p>
-          <footer className="text-sm">Ignacy Wielogorski</footer>
+          <footer className="text-sm">Ignacy Wielogórski</footer>
         </blockquote>
       </div>
     </div>

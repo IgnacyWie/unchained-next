@@ -5,6 +5,9 @@ FROM node:20-alpine AS base
 # 1. PRUNE: Scope the workspace to just this app
 # ---------------------------------------------------------
 FROM base AS builder
+# Disable Turbo telemetry
+ENV TURBO_TELEMETRY_DISABLED=1
+
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm install turbo --global
@@ -19,6 +22,10 @@ RUN turbo prune --scope=web --docker
 # 2. INSTALL: The Speed Layer (Fetch + Cache Mounts)
 # ---------------------------------------------------------
 FROM base AS installer
+
+# Disable Turbo telemetry
+ENV TURBO_TELEMETRY_DISABLED=1
+
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -64,6 +71,11 @@ RUN pnpm turbo run build --filter=web...
 # ---------------------------------------------------------
 FROM base AS runner
 WORKDIR /app
+
+# Disable Next.js & Turbo telemetry at runtime
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV TURBO_TELEMETRY_DISABLED=1
+ENV DO_NOT_TRACK=1
 
 ENV NODE_ENV=production
 ENV PORT=3000
