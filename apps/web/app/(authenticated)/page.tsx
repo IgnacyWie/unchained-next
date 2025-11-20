@@ -1,10 +1,5 @@
-import { prisma } from "@repo/db";
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
-import { notFound } from "next/navigation";
 import { Header } from "./components/header";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Import from your API file
 
 const title = "Acme Inc";
 const description = "My application.";

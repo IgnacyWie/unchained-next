@@ -2,7 +2,9 @@
   "name": "unchained-next",
   "private": true,
   "scripts": {
-    "build": "docker compose up -d --build",
+    "build": "turbo run build",
+    "docker-build": "docker build -f apps/web/Dockerfile . -t unchained-next-app",
+    "docker-build-target": "docker buildx build --platform linux/amd64,linux/arm64 -f apps/web/Dockerfile . -t ignacywie/web-app:latest --push",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

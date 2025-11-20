@@ -8,7 +8,7 @@ import { DesignSystemProvider } from "@repo/design-system";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "My SaaS App",
+  title: "Unchained Next",
   description: "Built with Next.js and Turbo",
 };
 

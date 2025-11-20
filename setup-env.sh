@@ -1,100 +1,131 @@
 #!/bin/bash
 
+# --- 0. Prerequisites ---
+echo "🐳 Docker Registry Setup"
+read -p "Enter your Docker Hub/Registry Username (leave blank to skip K8s manifest generation): " DOCKER_USER
+
 # --- 1. Helper Functions ---
-generate_secret() {
-  openssl rand -base64 32 | tr -d '\n'
+generate_hex() {
+  # We use hex for secrets to avoid special chars like '/' or '+'
+  # breaking the 'sed' replacement commands.
+  openssl rand -hex 32 | tr -d '\n'
 }
 
 generate_password() {
   openssl rand -hex 16 | tr -d '\n'
 }
 
-echo "🔐 Generating secrets for Docker Network setup..."
+to_base64() {
+  echo -n "$1" | base64
+}
 
-# --- 2. Generate Values ---
-# Database
+process_template() {
+  local template_file=$1
+  local output_file=$2
+
+  if [ ! -f "$template_file" ]; then
+    echo "⚠️  Template not found: $template_file"
+    return
+  fi
+
+  # We use | as delimiter for sed to avoid conflicts with URL slashes
+  sed \
+    -e "s|{{DB_USER}}|${DB_USER}|g" \
+    -e "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" \
+    -e "s|{{DB_NAME}}|${DB_NAME}|g" \
+    -e "s|{{DB_PORT_EXTERNAL}}|${DB_PORT_EXTERNAL}|g" \
+    -e "s|{{NEXTAUTH_SECRET}}|${NEXTAUTH_SECRET}|g" \
+    -e "s|{{NEXT_APP_URL}}|${NEXT_APP_URL}|g" \
+    -e "s|{{EMAIL_HOST_DOCKER}}|${EMAIL_HOST_DOCKER}|g" \
+    -e "s|{{EMAIL_HOST_LOCAL}}|${EMAIL_HOST_LOCAL}|g" \
+    -e "s|{{EMAIL_FROM}}|${EMAIL_FROM}|g" \
+    -e "s|{{CONN_STRING_LOCAL}}|${CONN_STRING_LOCAL}|g" \
+    -e "s|{{DOCKER_IMAGE_NAME}}|${DOCKER_IMAGE_NAME}|g" \
+    \
+    -e "s|{{B64_DB_USER}}|${B64_DB_USER}|g" \
+    -e "s|{{B64_DB_PASSWORD}}|${B64_DB_PASSWORD}|g" \
+    -e "s|{{B64_DB_NAME}}|${B64_DB_NAME}|g" \
+    -e "s|{{B64_CONN_STRING_K8S}}|${B64_CONN_STRING_K8S}|g" \
+    -e "s|{{B64_NEXTAUTH_SECRET}}|${B64_NEXTAUTH_SECRET}|g" \
+    -e "s|{{B64_NEXT_APP_DOMAIN}}|${B64_NEXT_APP_DOMAIN}|g" \
+    -e "s|{{B64_AWS_REGION}}|${B64_AWS_REGION}|g" \
+    -e "s|{{B64_AWS_USER}}|${B64_AWS_USER}|g" \
+    -e "s|{{B64_AWS_PASS}}|${B64_AWS_PASS}|g" \
+    "$template_file" >"$output_file"
+
+  echo "✅ Generated: $output_file"
+}
+
+echo ""
+echo "🔐 Generating configuration..."
+
+# --- 2. Define Variables ---
+
+# Basic Vars
 DB_USER="postgres"
 DB_NAME="myapp"
 DB_PASSWORD=$(generate_password)
-DB_PORT_INTERNAL="5432"
 DB_PORT_EXTERNAL="5432"
+NEXTAUTH_SECRET=$(generate_hex) # Hex to be sed-safe
+EMAIL_FROM="Unchained App <no-reply@unchained.local>"
 
-# NextAuth
-NEXTAUTH_SECRET=$(generate_secret)
+# URLs & Hosts
 NEXT_APP_URL="http://localhost:3000"
-
-# Email (Mailpit Defaults)
-EMAIL_USER="none"
-EMAIL_PASS="none"
-EMAIL_FROM="noreply@unchained.local"
-# For local development (Node running on host)
+NEXT_APP_DOMAIN="http://api.example.com" # K8s domain
 EMAIL_HOST_LOCAL="localhost"
-EMAIL_PORT_LOCAL="1025"
-# For Docker production (Container to Container)
 EMAIL_HOST_DOCKER="mailpit"
-EMAIL_PORT_DOCKER="1025"
 
-# 1. LOCAL Connection String (For Prisma Migrate / Local Dev)
-# Uses 'localhost' because your terminal is outside Docker
+# Connection Strings
 CONN_STRING_LOCAL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT_EXTERNAL}/${DB_NAME}?schema=public"
+CONN_STRING_K8S="postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/${DB_NAME}?schema=public"
 
-# --- 3. Write Root .env ---
-# Docker Compose reads this to spin up the containers
-echo "📄 Writing root .env..."
-cat <<EOF >.env
-# --- Database Raw Vars (Used to build connection strings) ---
-POSTGRES_USER=${DB_USER}
-POSTGRES_PASSWORD=${DB_PASSWORD}
-POSTGRES_DB=${DB_NAME}
-POSTGRES_PORT=${DB_PORT_EXTERNAL}
-
-# --- NextAuth ---
-NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-NEXT_PUBLIC_APP_URL=${NEXT_APP_URL}
-
-# --- Email (Docker Internal) ---
-# Used if you run the full stack inside Docker
-EMAIL_SERVER_HOST=${EMAIL_HOST_DOCKER}
-EMAIL_SERVER_PORT=${EMAIL_PORT_DOCKER}
-EMAIL_SERVER_USER=${EMAIL_USER}
-EMAIL_SERVER_PASSWORD=${EMAIL_PASS}
-EMAIL_FROM=${EMAIL_FROM}
-EOF
-
-# --- 4. Write Apps/Web .env ---
-# Used by 'npm run dev' locally
-if [ -d "apps/web" ]; then
-  echo "📄 Writing apps/web/.env..."
-  cat <<EOF >apps/web/.env
-# Local connection for development
-DATABASE_URL="${CONN_STRING_LOCAL}"
-
-# Auth
-NEXTAUTH_URL=${NEXT_APP_URL}
-NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-
-# Email (Localhost)
-# Connects to the forwarded port 1025 from Docker
-EMAIL_SERVER_HOST=${EMAIL_HOST_LOCAL}
-EMAIL_SERVER_PORT=${EMAIL_PORT_LOCAL}
-EMAIL_SERVER_USER=${EMAIL_USER}
-EMAIL_SERVER_PASSWORD=${EMAIL_PASS}
-EMAIL_FROM=${EMAIL_FROM}
-EOF
+# Docker Image
+if [ -n "$DOCKER_USER" ]; then
+  DOCKER_IMAGE_NAME="${DOCKER_USER}/web-app:latest"
+else
+  DOCKER_IMAGE_NAME="PLACEHOLDER_IMAGE"
 fi
 
-# --- 5. Write Packages/DB .env ---
-# Used by 'npx prisma migrate' locally
+# --- 3. Generate Base64 Versions (For Kubernetes) ---
+B64_DB_USER=$(to_base64 "$DB_USER")
+B64_DB_PASSWORD=$(to_base64 "$DB_PASSWORD")
+B64_DB_NAME=$(to_base64 "$DB_NAME")
+B64_CONN_STRING_K8S=$(to_base64 "$CONN_STRING_K8S")
+B64_NEXTAUTH_SECRET=$(to_base64 "$NEXTAUTH_SECRET")
+B64_NEXT_APP_DOMAIN=$(to_base64 "$NEXT_APP_DOMAIN")
+# Placeholders
+B64_AWS_REGION=$(to_base64 "us-east-1")
+B64_AWS_USER=$(to_base64 "change-me")
+B64_AWS_PASS=$(to_base64 "change-me")
+
+# --- 4. Run Processors ---
+
+# A. Root .env
+process_template "templates/env.root.tpl" ".env"
+
+# B. Apps/Web .env
+if [ -d "apps/web" ]; then
+  process_template "templates/env.web.tpl" "apps/web/.env"
+fi
+
+# C. Packages/DB .env
 if [ -d "packages/db" ]; then
-  echo "📄 Writing packages/db/.env..."
-  cat <<EOF >packages/db/.env
-DATABASE_URL="${CONN_STRING_LOCAL}"
-EOF
+  # Re-using env.web.tpl structure or creating a simple one on fly?
+  # Let's just write a simple one here as it's only 1 line usually.
+  echo "DATABASE_URL=\"${CONN_STRING_LOCAL}\"" >packages/db/.env
+  echo "✅ Generated: packages/db/.env"
+fi
+
+# D. Kubernetes
+mkdir -p ops/k8s
+process_template "templates/k8s.secrets.tpl" "ops/k8s/secrets.yaml"
+
+if [ -n "$DOCKER_USER" ]; then
+  process_template "templates/k8s.web.tpl" "ops/k8s/web.yaml"
+else
+  echo "⏭️  Skipping ops/k8s/web.yaml (No Docker User provided)"
 fi
 
 echo "---------------------------------------------------"
-echo "✅ Done!"
-echo "1. Database vars set."
-echo "2. NextAuth Secret generated."
-echo "3. Mailpit config added (localhost for App, 'mailpit' for Docker)."
+echo "🚀 Setup Complete!"
 echo "---------------------------------------------------"

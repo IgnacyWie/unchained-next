@@ -1,4 +1,5 @@
 import { ModeToggle } from "@repo/design-system/components/mode-toggle";
+import { Suspense } from 'react'
 import { CommandIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -30,7 +31,9 @@ const AuthLayout = ({ children }: AuthLayoutProps) => (
     </div>
     <div className="lg:p-8">
       <div className="mx-auto flex w-full max-w-[400px] flex-col justify-center space-y-6">
-        {children}
+        <Suspense>
+          {children}
+        </Suspense>
       </div>
     </div>
   </div>
