@@ -5,6 +5,13 @@ on:
     branches:
       - main
       - production
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "ops/helm/**"
+      - "Dockerfile"
+      - "apps/web/Dockerfile"
+      - ".github/workflows/deploy-production.yml"
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 env:
@@ -21,19 +28,41 @@ jobs:
       # 1. Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Fetch last 2 commits to detect changes
 
-      # 2. Set up Docker Buildx
+      # 2. Check what changed (for logging purposes)
+      - name: Detect changed files
+        id: changes
+        run: |
+          echo "### Changed Files" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          git diff --name-only HEAD^..HEAD >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Check if we should build
+          if git diff --name-only HEAD^..HEAD | grep -qE '^(apps/web/|packages/)'; then
+            echo "build_needed=true" >> $GITHUB_OUTPUT
+            echo "📦 Application code changed - building new image" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "build_needed=false" >> $GITHUB_OUTPUT
+            echo "⚡ Only Helm config changed - skipping build" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # 3. Set up Docker Buildx
       - name: Set up Docker Buildx
+        if: steps.changes.outputs.build_needed == 'true'
         uses: docker/setup-buildx-action@v3
 
-      # 3. Login to Docker Hub
+      # 4. Login to Docker Hub
       - name: Login to Docker Hub
+        if: steps.changes.outputs.build_needed == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 4. Generate image tag (using git SHA)
+      # 5. Generate image tag (using git SHA)
       - name: Generate image tag
         id: image_tag
         run: |
@@ -43,8 +72,9 @@ jobs:
           echo "full_image=${DOCKER_IMAGE_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "latest_image=${DOCKER_IMAGE_NAME}:latest" >> $GITHUB_OUTPUT
 
-      # 5. Build and push Docker image
+      # 6. Build and push Docker image (only if app code changed)
       - name: Build and push Docker image
+        if: steps.changes.outputs.build_needed == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -56,40 +86,49 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
 
-      # 6. Set up kubectl
+      # 7. Set up kubectl
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
         with:
           version: "v1.28.0"
 
-      # 7. Configure kubectl with kubeconfig
+      # 8. Configure kubectl with kubeconfig
       - name: Configure kubectl
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
-      # 8. Verify cluster connection
+      # 9. Verify cluster connection
       - name: Verify cluster connection
         run: |
           kubectl cluster-info
           kubectl get nodes
 
-      # 9. Set up Helm
+      # 10. Set up Helm
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
           version: "v3.13.0"
 
-      # 10. Create Helm values file from secrets
+      # 11. Create Helm values file from secrets
       - name: Create Helm values file
         run: |
+          # Use new image tag if built, otherwise use existing deployment
+          if [ "${{ steps.changes.outputs.build_needed }}" == "true" ]; then
+            IMAGE_TAG="${{ steps.image_tag.outputs.tag }}"
+          else
+            # Get current image tag from deployment
+            IMAGE_TAG=$(kubectl get deployment/${{ env.HELM_RELEASE_NAME }}-web -n ${{ env.KUBERNETES_NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null | cut -d: -f2 || echo "latest")
+            echo "ℹ️ Reusing existing image tag: ${IMAGE_TAG}"
+          fi
+
           cat << EOF > ${{ env.HELM_CHART_PATH }}/values.prod.yaml
           web:
             replicaCount: 2
             image:
               repository: ${{ env.DOCKER_IMAGE_NAME }}
-              tag: ${{ steps.image_tag.outputs.tag }}
+              tag: ${IMAGE_TAG}
               pullPolicy: Always
             service:
               type: ClusterIP
@@ -125,7 +164,7 @@ jobs:
               clusterIssuer: acme-issuer
           EOF
 
-      # 11. Deploy with Helm
+      # 12. Deploy with Helm
       - name: Deploy to Kubernetes
         run: |
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
@@ -136,27 +175,34 @@ jobs:
             --timeout 5m \
             --atomic
 
-      # 12. Verify deployment
+      # 13. Verify deployment
       - name: Verify deployment
         run: |
           kubectl rollout status deployment/${{ env.HELM_RELEASE_NAME }}-web -n ${{ env.KUBERNETES_NAMESPACE }}
           kubectl get pods -n ${{ env.KUBERNETES_NAMESPACE }} -l component=web
 
-      # 13. Get deployment info
+      # 14. Get deployment info
       - name: Get deployment info
         if: success()
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: ${{ steps.image_tag.outputs.full_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.changes.outputs.build_needed }}" == "true" ]; then
+            echo "- **Image Built**: ${{ steps.image_tag.outputs.full_image }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Image**: Reused existing (no app changes)" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "- **Release**: ${{ env.HELM_RELEASE_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Namespace**: ${{ env.KUBERNETES_NAMESPACE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Pods Status" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Pods Status" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           kubectl get pods -n ${{ env.KUBERNETES_NAMESPACE }} >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-      # 14. Rollback on failure
+      # 15. Rollback on failure
       - name: Rollback on failure
         if: failure()
         run: |
