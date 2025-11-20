@@ -17,6 +17,10 @@ fi
 read -p "Enter your Application Name (default: unchained-web): " APP_NAME
 APP_NAME=${APP_NAME:-unchained-web}
 
+# Get Production Domain (NEW ADDITION)
+read -p "Enter your Production Domain (default: http://api.example.com): " INPUT_DOMAIN
+NEXT_APP_DOMAIN=${INPUT_DOMAIN:-"http://api.example.com"}
+
 # --- 1. Helper Functions ---
 generate_hex() {
   openssl rand -hex 32 | tr -d '\n'
@@ -46,6 +50,7 @@ process_template() {
     -e "s|{{DB_PORT_EXTERNAL}}|${DB_PORT_EXTERNAL}|g" \
     -e "s|{{NEXTAUTH_SECRET}}|${NEXTAUTH_SECRET}|g" \
     -e "s|{{NEXT_APP_URL}}|${NEXT_APP_URL}|g" \
+    -e "s|{{NEXT_APP_DOMAIN}}|${NEXT_APP_DOMAIN}|g" \
     -e "s|{{EMAIL_HOST_DOCKER}}|${EMAIL_HOST_DOCKER}|g" \
     -e "s|{{EMAIL_HOST_LOCAL}}|${EMAIL_HOST_LOCAL}|g" \
     -e "s|{{EMAIL_FROM}}|${EMAIL_FROM}|g" \
@@ -75,7 +80,7 @@ EMAIL_FROM="no-reply@unchained.local"
 
 # URLs
 NEXT_APP_URL="http://localhost:3000"
-NEXT_APP_DOMAIN="http://api.example.com"
+# Note: NEXT_APP_DOMAIN is now set in Section 0 via user input
 EMAIL_HOST_LOCAL="localhost"
 EMAIL_HOST_DOCKER="mailpit"
 
@@ -91,6 +96,7 @@ else
 fi
 
 echo "ℹ️  Image Name set to: $DOCKER_IMAGE_NAME"
+echo "ℹ️  Domain set to: $NEXT_APP_DOMAIN"
 
 # --- 3. Generate Base64 Versions ---
 B64_DB_USER=$(to_base64 "$DB_USER")
