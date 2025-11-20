@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Button } from "@repo/ui/button"
+import { Button } from "@repo/design-system/components/ui/button"
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -31,6 +31,7 @@ export default function Home() {
 
             <Button
               onClick={() => signOut()}
+              variant='destructive'
             >
               Sign Out
             </Button>
@@ -44,7 +45,6 @@ export default function Home() {
 
             <Button
               onClick={() => signIn()}
-              className="px-6 py-3 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition"
             >
               Sign In
             </Button>

@@ -13,21 +13,21 @@
 
 The "Modern Stack" has become a subscription trap. You shouldn't have to pay per-user fees just to authenticate users or store rows in a database.
 
-| Feature | The "SaaS" Way (Vercel/Clerk/Neon) | The Unchained Way |
-| :--- | :--- | :--- |
-| **Hosting** | Serverless Pricing (Unpredictable) | **Docker / K8s (Fixed Cost VPS)** |
-| **Auth** | $ per Monthly Active User | **Unlimited Users (Self-hosted Zitadel)** |
-| **Database** | Pricing based on compute hours | **Standard PostgreSQL Container** |
-| **Data** | Locked in proprietary clouds | **100% Data Sovereignty** |
-| **Cost** | Scales with traffic ($$$) | **Scales with hardware ($)** |
+| Feature      | The "SaaS" Way (Vercel/Clerk/Neon) | The Unchained Way                         |
+| :----------- | :--------------------------------- | :---------------------------------------- |
+| **Hosting**  | Serverless Pricing (Unpredictable) | **Docker / K8s (Fixed Cost VPS)**         |
+| **Auth**     | $ per Monthly Active User          | **Unlimited Users (Self-hosted Zitadel)** |
+| **Database** | Pricing based on compute hours     | **Standard PostgreSQL Container**         |
+| **Data**     | Locked in proprietary clouds       | **100% Data Sovereignty**                 |
+| **Cost**     | Scales with traffic ($$$)          | **Scales with hardware ($)**              |
 
 ## 🛠️ The Stack
 
-  * **Application:** [Next.js](https://nextjs.org/) (Containerized, standalone output)
-  * **Authentication:** [Zitadel](https://zitadel.com/) (Open source identity management - The Clerk alternative)
-  * **Database:** [PostgreSQL](https://www.postgresql.org/)
-  * **Reverse Proxy:** [Traefik](https://traefik.io/) or Nginx
-  * **Infrastructure:** Docker Compose (Local) & Kubernetes (Production)
+- **Application:** [Next.js](https://nextjs.org/) (Containerized, standalone output)
+- **Authentication:** [Zitadel](https://zitadel.com/) (Open source identity management - The Clerk alternative)
+- **Database:** [PostgreSQL](https://www.postgresql.org/)
+- **Reverse Proxy:** [Traefik](https://traefik.io/) or Nginx
+- **Infrastructure:** Docker Compose (Local) & Kubernetes (Production)
 
 ## 📂 Project Structure
 
@@ -75,7 +75,7 @@ cd ops/docker-compose
 docker-compose up -d
 ```
 
-*Note: Zitadel takes a moment to initialize the first time.*
+_Note: Zitadel takes a moment to initialize the first time._
 
 ### 4\. Configure Next.js
 
@@ -85,8 +85,8 @@ Once Zitadel is running (usually `http://localhost:8080`), create an Instance, g
 
 ```bash
 cd ../../app
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Your app is now running at `http://localhost:3000`, authenticated against your local Zitadel instance, backed by your local Postgres.
@@ -97,11 +97,11 @@ We believe in **"Write once, deploy anywhere."**
 
 Inside the `ops/k8s` folder, you will find standard manifests to deploy this stack to any Kubernetes provider (DigitalOcean, Hetzner, AWS EKS, or a home lab).
 
-1.  **Build** your Next.js Docker image.
-2.  **Push** to your registry.
-3.  **Apply** the manifests in `ops/k8s`.
+1. **Build** your Next.js Docker image.
+2. **Push** to your registry.
+3. **Apply** the manifests in `ops/k8s`.
 
-*(Detailed K8s guide coming soon in the /docs folder)*
+_(Detailed K8s guide coming soon in the /docs folder)_
 
 ## 🤝 Contributing
 

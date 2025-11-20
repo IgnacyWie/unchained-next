@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@repo/design-system/components/ui/button"
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -67,12 +68,12 @@ export default function RegisterPage() {
             />
           </div>
 
-          <button
+          <Button
             type="submit"
-            className="w-full py-2 text-white bg-green-600 rounded hover:bg-green-700"
+            className="w-full"
           >
             Register
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-center text-gray-600">

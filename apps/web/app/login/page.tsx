@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@repo/design-system/components/ui/button"
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -58,12 +59,12 @@ export default function LoginPage() {
             />
           </div>
 
-          <button
+          <Button
             type="submit"
-            className="w-full py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+            className="w-full"
           >
             Sign In
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-center text-gray-600">
