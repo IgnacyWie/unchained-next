@@ -3,6 +3,7 @@ web:
   replicaCount: 2
   image:
     repository: ignacywie/unchained-web:latest
+    tag: latest
     pullPolicy: Always
   service:
     type: ClusterIP

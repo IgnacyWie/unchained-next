@@ -3,7 +3,7 @@ web:
   replicaCount: 2
   image:
     # --- AUTO-GENERATED: Set to the Docker image name from the script ---
-    repository: {{DOCKER_IMAGE_NAME}}
+    repository: ignacywie/unchained-web
     tag: latest
     pullPolicy: Always
   service:
@@ -27,12 +27,12 @@ postgres:
 # In production, consider using external-secrets or sealing these.
 secrets:
   # --- AUTO-GENERATED: Database Credentials ---
-  postgresUser: "{{DB_USER}}"
-  postgresPassword: "{{DB_PASSWORD}}"
-  postgresDb: "{{DB_NAME}}"
-  nextAuthSecret: "{{NEXTAUTH_SECRET}}"
+  postgresUser: "postgres"
+  postgresPassword: "CHANGE_ME_RANDOM_32_CHARS"
+  postgresDb: "unchained_web_db"
+  nextAuthSecret: "CHANGE_ME_RANDOM_64_CHARS"
   # --- AUTO-GENERATED: NEXT_APP_URL is derived from the ingress host ---
-  nextAuthUrl: "{{NEXT_APP_DOMAIN}}"
+  nextAuthUrl: "https://unchained.wie.dev"
 
   aws:
     region: "us-east-1"
@@ -42,6 +42,6 @@ secrets:
 ingress:
   enabled: true # Set to true to create the Ingress resource
   # --- AUTO-GENERATED: External DNS name for your app ---
-  host: {{INGRESS_HOST}} 
+  host: unchained.wie.dev 
   tls:
     clusterIssuer: acme-issuer

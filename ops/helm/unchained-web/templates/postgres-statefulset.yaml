@@ -23,29 +23,51 @@ spec:
           image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
           ports:
             - containerPort: {{ .Values.postgres.service.port }}
-          envFrom:
-            - secretRef:
-                name: {{ .Release.Name }}-secrets
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: POSTGRES_DB
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: DATABASE_URL
+
           readinessProbe:
             exec:
               command:
-                - pg_isready
-                - -U
-                - $(POSTGRES_USER)
+                - sh
+                - -c
+                - |
+                  pg_isready -U "$POSTGRES_USER"
             initialDelaySeconds: 5
             periodSeconds: 5
+
           livenessProbe:
             exec:
               command:
-                - pg_isready
-                - -U
-                - $(POSTGRES_USER)
+                - sh
+                - -c
+                - |
+                  pg_isready -U "$POSTGRES_USER"
             initialDelaySeconds: 30
             periodSeconds: 10
+
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
-              subPath: data  # Important! Prevents permission issues
   volumeClaimTemplates:
     - metadata:
         name: postgres-storage
@@ -54,3 +76,4 @@ spec:
         resources:
           requests:
             storage: {{ .Values.postgres.storage.size }}
+
