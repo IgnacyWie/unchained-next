@@ -1,6 +1,7 @@
 "use client";
 
 import { ModeToggle } from "@repo/design-system/components/mode-toggle";
+import { UserButton } from './user-button'
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   Collapsible,
@@ -153,7 +154,7 @@ const data = {
   navSecondary: [
     {
       title: "Webhooks",
-      url: "/webhooks",
+      url: "#",
       icon: AnchorIcon,
     },
     {
@@ -305,7 +306,7 @@ export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem className="flex items-center gap-2">
-              {/*Replace the user button*/}
+              <UserButton />
               <div className="flex shrink-0 items-center gap-px">
                 <ModeToggle />
                 <Button
