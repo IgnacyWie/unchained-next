@@ -137,7 +137,7 @@ We are actively working on standardizing the deployment pipeline. Help is welcom
 
 ### Automation (CI/CD)
 
-- [ ] **GitHub Actions:** Create a standard workflow (`.github/workflows/deploy.yml`) that:
+- [x] **GitHub Actions:** Create a standard workflow (`.github/workflows/deploy.yml`) that:
   1. Builds the Next.js Docker image (using Turbo cache).
   2. Pushes to GHCR or Docker Hub.
   3. Triggers a rollout restart on the Kubernetes cluster.
