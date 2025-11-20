@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Header } from "./components/header";
 
-const title = "Acme Inc";
+const title = "Unchained Next";
 const description = "My application.";
 
 

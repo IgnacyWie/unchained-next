@@ -122,6 +122,10 @@ Your app is now running at `http://localhost:3000`.
 
 We are actively working on standardizing the deployment pipeline. Help is welcome\!
 
+### Authentication
+
+- [] Integrate WebAuthn (Passkeys) as an additional provider in NextAuth.js
+
 ### Configuration & Standards
 
 - [] Migrate the `\ops\k8s` to a helm chart, for easier deployment
