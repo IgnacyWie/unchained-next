@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: Reset body to prevent default margins */
+body {
+  @apply bg-gray-100;
+}
