@@ -21,40 +21,6 @@ env:
   KUBERNETES_NAMESPACE: default
 
 jobs:
-  prisma-sync:
-    name: Prisma DB Sync
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Install dependencies (workspace)
-        run: pnpm install --no-frozen-lockfile
-        working-directory: ./packages/db
-
-      - name: Wait for Postgres
-        run: |
-          echo "⏳ Waiting for Postgres..."
-          until pg_isready -h ${{ secrets.DB_HOST }} -p ${{ secrets.DB_PORT }} -U ${{ secrets.DB_USER }}; do
-            sleep 2
-          done
-          echo "✅ Postgres is ready"
-
-      - name: Run Prisma DB Push
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm prisma db push
-        working-directory: ./packages/db
-
   build-and-deploy:
     environment: production # Requires approval before running
     runs-on: ubuntu-latest
