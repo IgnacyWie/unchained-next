@@ -15,7 +15,6 @@ RUN npm install turbo --global
 COPY . .
 
 # ✂️ PRUNE: Slices the monorepo to only what 'web' needs
-# Ensure '--scope=web' matches the "name" in apps/web/package.json
 RUN turbo prune --scope=web --docker
 
 # ---------------------------------------------------------
@@ -34,28 +33,19 @@ RUN npm install -g pnpm
 RUN corepack enable
 
 # 📂 COPY METADATA FIRST
-# We copy *only* package.json's and the lockfile. 
-# If your source code changes but deps don't, this layer is cached!
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 
 # 🚀 SPEED HACK 1: pnpm fetch + Cache Mount
-# - This reads the lockfile and downloads packages to a virtual store.
-# - The '--mount' tells Docker/OrbStack: "Keep this folder safe on my hard drive!"
-# - If you rebuild, it reuses these files instantly.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm config set store-dir /pnpm/store && \
   pnpm fetch
 
 # 🚀 SPEED HACK 2: Install from Offline Store
-# - We install using the files we just fetched.
-# - '--offline' ensures we don't touch the internet.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm install -r --offline --frozen-lockfile
 
 # 📂 COPY SOURCE CODE
-# Now we copy the actual code. This invalidates cache often, 
-# but the heavy install steps above are already done.
 COPY --from=builder /app/out/full/ .
 
 # 🛠️ PRISMA GENERATE
@@ -80,6 +70,10 @@ ENV DO_NOT_TRACK=1
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# 👇 CRITICAL FIX: Install OpenSSL for Prisma
+# This fixes "Error loading shared library libssl.so.1.1"
+RUN apk add --no-cache libc6-compat openssl
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

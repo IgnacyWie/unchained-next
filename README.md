@@ -128,7 +128,7 @@ We are actively working on standardizing the deployment pipeline. Help is welcom
 
 ### Configuration & Standards
 
-- [] Migrate the `\ops\k8s` to a helm chart, for easier deployment
+- [x] Migrate the `\ops\k8s` to a helm chart, for easier deployment
 - [x] **Standardize `IMAGE_NAME`:** Update `.env` templates and `k8s` manifests to use a consistent variable for the Docker image name/tag to prevent mismatches during build/deploy.
 
 ### Documentation

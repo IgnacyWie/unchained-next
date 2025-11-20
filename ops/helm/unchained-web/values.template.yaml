@@ -1,0 +1,42 @@
+# Web Application Settings
+web:
+  replicaCount: 2
+  image:
+    repository: ignacywie/unchained-web:latest
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  env:
+    nodeEnv: production
+
+# Postgres Settings
+postgres:
+  image:
+    repository: postgres
+    tag: 15-alpine
+  storage:
+    size: 1Gi
+  service:
+    port: 5432
+
+# Secrets (Sensitive Data)
+# IMPORTANT: Copy this file to values.yaml and fill in real values
+# values.yaml is gitignored and should never be committed
+secrets:
+  postgresUser: "postgres"
+  postgresPassword: "CHANGE_ME_GENERATE_RANDOM_32_CHARS"
+  postgresDb: "unchained_web_db"
+  nextAuthSecret: "CHANGE_ME_GENERATE_RANDOM_64_CHARS"
+  nextAuthUrl: "https://your-domain.com"
+  aws:
+    region: "us-east-1"
+    smtpUser: ""
+    smtpPass: ""
+
+ingress:
+  enabled: true
+  host: your-domain.com
+  tls:
+    clusterIssuer: acme-issuer

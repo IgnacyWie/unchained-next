@@ -1,0 +1,39 @@
+{{ if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-web-ingress
+  labels:
+    app: {{ .Chart.Name }}
+    component: web
+  annotations:
+    # 1. Cert-Manager Integration: This annotation tells cert-manager to automatically
+    #    issue a certificate for the host using the specified ClusterIssuer (acme-issuer).
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer }}
+    # Note: The kubernetes.io/ingress.class annotation is removed.
+spec:
+  # Ingress Class Name: Targets the default Traefik Ingress Controller used in K3s.
+  ingressClassName: traefik
+  # TLS Configuration
+  tls:
+    # The list of hosts covered by the certificate
+    - hosts:
+        - {{ .Values.ingress.host }}
+      # The Kubernetes Secret where the generated certificate will be stored
+      secretName: {{ .Release.Name }}-tls-secret
+  # Routing Rules
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            # PathType 'Prefix' ensures all paths under the root (/) are routed
+            pathType: Prefix
+            backend:
+              service:
+                # Name of the service defined in your manifest
+                name: {{ .Release.Name }}-web-service
+                port:
+                  # The port of the Service (port: 80)
+                  number: {{ .Values.web.service.port }}
+{{ end }}

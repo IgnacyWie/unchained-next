@@ -17,9 +17,9 @@ fi
 read -p "Enter your Application Name (default: unchained-web): " APP_NAME
 APP_NAME=${APP_NAME:-unchained-web}
 
-# Get Production Domain (NEW ADDITION)
-read -p "Enter your Production Domain (default: http://api.example.com): " INPUT_DOMAIN
-NEXT_APP_DOMAIN=${INPUT_DOMAIN:-"http://api.example.com"}
+# Get Production Domain
+read -p "Enter your Production Domain (default: https://unchained.wie.dev): " INPUT_DOMAIN
+NEXT_APP_DOMAIN=${INPUT_DOMAIN:-"https://unchained.wie.dev"}
 
 # --- 1. Helper Functions ---
 generate_hex() {
@@ -28,10 +28,6 @@ generate_hex() {
 
 generate_password() {
   openssl rand -hex 16 | tr -d '\n'
-}
-
-to_base64() {
-  echo -n "$1" | base64
 }
 
 process_template() {
@@ -51,18 +47,13 @@ process_template() {
     -e "s|{{NEXTAUTH_SECRET}}|${NEXTAUTH_SECRET}|g" \
     -e "s|{{NEXT_APP_URL}}|${NEXT_APP_URL}|g" \
     -e "s|{{NEXT_APP_DOMAIN}}|${NEXT_APP_DOMAIN}|g" \
+    -e "s|{{INGRESS_HOST}}|${INGRESS_HOST}|g" \
     -e "s|{{EMAIL_HOST_DOCKER}}|${EMAIL_HOST_DOCKER}|g" \
     -e "s|{{EMAIL_HOST_LOCAL}}|${EMAIL_HOST_LOCAL}|g" \
     -e "s|{{EMAIL_FROM}}|${EMAIL_FROM}|g" \
     -e "s|{{CONN_STRING_LOCAL}}|${CONN_STRING_LOCAL}|g" \
-    -e "s|{{DOCKER_IMAGE_NAME}}|${DOCKER_IMAGE_NAME}|g" \
-    \
-    -e "s|{{B64_DB_USER}}|${B64_DB_USER}|g" \
-    -e "s|{{B64_DB_PASSWORD}}|${B64_DB_PASSWORD}|g" \
-    -e "s|{{B64_DB_NAME}}|${B64_DB_NAME}|g" \
-    -e "s|{{B64_CONN_STRING_K8S}}|${B64_CONN_STRING_K8S}|g" \
-    -e "s|{{B64_NEXTAUTH_SECRET}}|${B64_NEXTAUTH_SECRET}|g" \
-    -e "s|{{B64_NEXT_APP_DOMAIN}}|${B64_NEXT_APP_DOMAIN}|g" \
+    -e "s|{{CONN_STRING_K8S}}|${CONN_STRING_K8S}|g" \
+    -e "s|{{DOCKER_IMAGE_NAME}}|${DOCKER_IMAGE_NAME_WITH_TAG}|g" \
     "$template_file" >"$output_file"
 
   echo "✅ Generated: $output_file"
@@ -70,7 +61,6 @@ process_template() {
 
 # --- 2. Define Variables ---
 
-# Basic Vars
 DB_USER="postgres"
 DB_NAME="${APP_NAME//-/_}_db"
 DB_PASSWORD=$(generate_password)
@@ -78,68 +68,53 @@ DB_PORT_EXTERNAL="5432"
 NEXTAUTH_SECRET=$(generate_hex)
 EMAIL_FROM="no-reply@unchained.local"
 
-# URLs
 NEXT_APP_URL="http://localhost:3000"
-# Note: NEXT_APP_DOMAIN is now set in Section 0 via user input
 EMAIL_HOST_LOCAL="localhost"
 EMAIL_HOST_DOCKER="mailpit"
 
-# Connection Strings
 CONN_STRING_LOCAL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT_EXTERNAL}/${DB_NAME}?schema=public"
 CONN_STRING_K8S="postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/${DB_NAME}?schema=public"
 
-# Docker Image
 if [ -n "$DOCKER_USER" ]; then
-  DOCKER_IMAGE_NAME="${DOCKER_USER}/${APP_NAME}:latest"
+  DOCKER_IMAGE_NAME="${DOCKER_USER}/${APP_NAME}"
 else
-  DOCKER_IMAGE_NAME="${APP_NAME}:latest"
+  DOCKER_IMAGE_NAME="${APP_NAME}"
 fi
+DOCKER_IMAGE_NAME_WITH_TAG="${DOCKER_IMAGE_NAME}:latest"
 
-echo "ℹ️  Image Name set to: $DOCKER_IMAGE_NAME"
-echo "ℹ️  Domain set to: $NEXT_APP_DOMAIN"
+echo "ℹ️  Image Name set to: $DOCKER_IMAGE_NAME_WITH_TAG"
 
-# --- 3. Generate Base64 Versions ---
-B64_DB_USER=$(to_base64 "$DB_USER")
-B64_DB_PASSWORD=$(to_base64 "$DB_PASSWORD")
-B64_DB_NAME=$(to_base64 "$DB_NAME")
-B64_CONN_STRING_K8S=$(to_base64 "$CONN_STRING_K8S")
-B64_NEXTAUTH_SECRET=$(to_base64 "$NEXTAUTH_SECRET")
-B64_NEXT_APP_DOMAIN=$(to_base64 "$NEXT_APP_DOMAIN")
+INGRESS_HOST=$(echo "$NEXT_APP_DOMAIN" | sed -E 's|https?://||')
+echo "ℹ️  Domain set to: $INGRESS_HOST"
 
-# --- 4. Run Processors ---
+# --- 3. Generate Files ---
 
-# A. Root .env (Ensure DOCKER_IMAGE_NAME is added here)
+mkdir -p ops/helm/unchained-web
+mkdir -p apps/web
+mkdir -p packages/db
+
+# Root .env
 if [ -f "templates/env.root.tpl" ]; then
   process_template "templates/env.root.tpl" ".env"
 else
-  # Fallback: Create a simple .env if template doesn't exist
-  echo "DOCKER_IMAGE_NAME=\"${DOCKER_IMAGE_NAME}\"" >.env
+  echo "DOCKER_IMAGE_NAME=\"${DOCKER_IMAGE_NAME_WITH_TAG}\"" >.env
   echo "✅ Generated: .env (Basic)"
 fi
 
-# B. Apps/Web .env
-if [ -d "apps/web" ]; then
-  mkdir -p apps/web
+# Apps/Web .env
+if [ -f "templates/env.web.tpl" ]; then
   process_template "templates/env.web.tpl" "apps/web/.env"
-fi
-
-# C. Packages/DB .env
-if [ -d "packages/db" ]; then
-  mkdir -p packages/db
-  echo "DATABASE_URL=\"${CONN_STRING_LOCAL}\"" >packages/db/.env
-  echo "✅ Generated: packages/db/.env"
-fi
-
-# D. Kubernetes
-mkdir -p ops/k8s
-process_template "templates/k8s.secrets.tpl" "ops/k8s/secrets.yaml"
-
-if [ -n "$DOCKER_USER" ]; then
-  process_template "templates/k8s.web.tpl" "ops/k8s/web.yaml"
 else
-  echo "⏭️  Skipping ops/k8s/web.yaml (No Docker User provided)"
+  echo "⏭️  Skipping apps/web/.env (Template not found)"
 fi
+
+# DB .env
+echo "DATABASE_URL=\"${CONN_STRING_LOCAL}\"" >packages/db/.env
+echo "✅ Generated: packages/db/.env"
+
+# Helm values.yaml
+process_template "templates/helm.values.tpl" "ops/helm/unchained-web/values.yaml"
 
 echo "---------------------------------------------------"
-echo "🚀 Setup Complete! .env files contain your config."
+echo "🚀 Setup Complete! Helm values.yaml is ready."
 echo "---------------------------------------------------"

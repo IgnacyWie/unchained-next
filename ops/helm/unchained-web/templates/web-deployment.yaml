@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    app: {{ .Chart.Name }}
+    component: web
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+      component: web
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        component: web
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ .Release.Name }}-postgres-service -p {{ .Values.postgres.service.port }} -U $(POSTGRES_USER); do
+                echo "Waiting for postgres..."
+                sleep 2
+              done
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+      containers:
+        - name: web
+          image: "{{ .Values.web.image.repository }}"
+          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.web.service.targetPort }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.web.env.nodeEnv | quote }}
