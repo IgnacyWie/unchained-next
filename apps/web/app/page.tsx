@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession, signIn, signOut } from "next-auth/react";
+import { Button } from "@repo/ui/button"
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -28,12 +29,11 @@ export default function Home() {
               <pre className="text-xs">{JSON.stringify(session, null, 2)}</pre>
             </div>
 
-            <button
+            <Button
               onClick={() => signOut()}
-              className="px-6 py-3 bg-red-500 text-white font-bold rounded hover:bg-red-600 transition"
             >
               Sign Out
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="w-full text-center space-y-4">
@@ -42,12 +42,12 @@ export default function Home() {
               <p>You are currently a guest.</p>
             </div>
 
-            <button
+            <Button
               onClick={() => signIn()}
               className="px-6 py-3 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition"
             >
               Sign In
-            </button>
+            </Button>
           </div>
         )}
 
