@@ -12,11 +12,9 @@ spec:
       labels:
         app: web
     spec:
-      imagePullSecrets:
-        - name: regcred
       containers:
         - name: web
-          image: ignacywie/web-app:latest
+          image: ignacywie/unchained-web:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -24,8 +22,8 @@ spec:
             - secretRef:
                 name: app-secrets
           env:
-            - name: NODE_ENV
-              value: "production"
+             - name: NODE_ENV
+               value: "production"
 ---
 apiVersion: v1
 kind: Service

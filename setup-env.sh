@@ -1,13 +1,24 @@
 #!/bin/bash
 
 # --- 0. Prerequisites ---
-echo "🐳 Docker Registry Setup"
-read -p "Enter your Docker Hub/Registry Username (leave blank to skip K8s manifest generation): " DOCKER_USER
+echo "🐳 Docker Registry & Project Setup"
+
+# Attempt to auto-detect Docker username
+DETECTED_USER=$(docker info 2>/dev/null | sed -n 's/^\s*Username: //p')
+
+if [ -n "$DETECTED_USER" ]; then
+  read -p "Enter Docker Hub/Registry Username [${DETECTED_USER}]: " INPUT_USER
+  DOCKER_USER=${INPUT_USER:-$DETECTED_USER}
+else
+  read -p "Enter your Docker Hub/Registry Username (leave blank for local only): " DOCKER_USER
+fi
+
+# Get App Name
+read -p "Enter your Application Name (default: unchained-web): " APP_NAME
+APP_NAME=${APP_NAME:-unchained-web}
 
 # --- 1. Helper Functions ---
 generate_hex() {
-  # We use hex for secrets to avoid special chars like '/' or '+'
-  # breaking the 'sed' replacement commands.
   openssl rand -hex 32 | tr -d '\n'
 }
 
@@ -28,7 +39,6 @@ process_template() {
     return
   fi
 
-  # We use | as delimiter for sed to avoid conflicts with URL slashes
   sed \
     -e "s|{{DB_USER}}|${DB_USER}|g" \
     -e "s|{{DB_PASSWORD}}|${DB_PASSWORD}|g" \
@@ -48,30 +58,24 @@ process_template() {
     -e "s|{{B64_CONN_STRING_K8S}}|${B64_CONN_STRING_K8S}|g" \
     -e "s|{{B64_NEXTAUTH_SECRET}}|${B64_NEXTAUTH_SECRET}|g" \
     -e "s|{{B64_NEXT_APP_DOMAIN}}|${B64_NEXT_APP_DOMAIN}|g" \
-    -e "s|{{B64_AWS_REGION}}|${B64_AWS_REGION}|g" \
-    -e "s|{{B64_AWS_USER}}|${B64_AWS_USER}|g" \
-    -e "s|{{B64_AWS_PASS}}|${B64_AWS_PASS}|g" \
     "$template_file" >"$output_file"
 
   echo "✅ Generated: $output_file"
 }
 
-echo ""
-echo "🔐 Generating configuration..."
-
 # --- 2. Define Variables ---
 
 # Basic Vars
 DB_USER="postgres"
-DB_NAME="myapp"
+DB_NAME="${APP_NAME//-/_}_db"
 DB_PASSWORD=$(generate_password)
 DB_PORT_EXTERNAL="5432"
-NEXTAUTH_SECRET=$(generate_hex) # Hex to be sed-safe
-EMAIL_FROM="Unchained App <no-reply@unchained.local>"
+NEXTAUTH_SECRET=$(generate_hex)
+EMAIL_FROM="no-reply@unchained.local"
 
-# URLs & Hosts
+# URLs
 NEXT_APP_URL="http://localhost:3000"
-NEXT_APP_DOMAIN="http://api.example.com" # K8s domain
+NEXT_APP_DOMAIN="http://api.example.com"
 EMAIL_HOST_LOCAL="localhost"
 EMAIL_HOST_DOCKER="mailpit"
 
@@ -81,37 +85,41 @@ CONN_STRING_K8S="postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/${
 
 # Docker Image
 if [ -n "$DOCKER_USER" ]; then
-  DOCKER_IMAGE_NAME="${DOCKER_USER}/web-app:latest"
+  DOCKER_IMAGE_NAME="${DOCKER_USER}/${APP_NAME}:latest"
 else
-  DOCKER_IMAGE_NAME="PLACEHOLDER_IMAGE"
+  DOCKER_IMAGE_NAME="${APP_NAME}:latest"
 fi
 
-# --- 3. Generate Base64 Versions (For Kubernetes) ---
+echo "ℹ️  Image Name set to: $DOCKER_IMAGE_NAME"
+
+# --- 3. Generate Base64 Versions ---
 B64_DB_USER=$(to_base64 "$DB_USER")
 B64_DB_PASSWORD=$(to_base64 "$DB_PASSWORD")
 B64_DB_NAME=$(to_base64 "$DB_NAME")
 B64_CONN_STRING_K8S=$(to_base64 "$CONN_STRING_K8S")
 B64_NEXTAUTH_SECRET=$(to_base64 "$NEXTAUTH_SECRET")
 B64_NEXT_APP_DOMAIN=$(to_base64 "$NEXT_APP_DOMAIN")
-# Placeholders
-B64_AWS_REGION=$(to_base64 "us-east-1")
-B64_AWS_USER=$(to_base64 "change-me")
-B64_AWS_PASS=$(to_base64 "change-me")
 
 # --- 4. Run Processors ---
 
-# A. Root .env
-process_template "templates/env.root.tpl" ".env"
+# A. Root .env (Ensure DOCKER_IMAGE_NAME is added here)
+if [ -f "templates/env.root.tpl" ]; then
+  process_template "templates/env.root.tpl" ".env"
+else
+  # Fallback: Create a simple .env if template doesn't exist
+  echo "DOCKER_IMAGE_NAME=\"${DOCKER_IMAGE_NAME}\"" >.env
+  echo "✅ Generated: .env (Basic)"
+fi
 
 # B. Apps/Web .env
 if [ -d "apps/web" ]; then
+  mkdir -p apps/web
   process_template "templates/env.web.tpl" "apps/web/.env"
 fi
 
 # C. Packages/DB .env
 if [ -d "packages/db" ]; then
-  # Re-using env.web.tpl structure or creating a simple one on fly?
-  # Let's just write a simple one here as it's only 1 line usually.
+  mkdir -p packages/db
   echo "DATABASE_URL=\"${CONN_STRING_LOCAL}\"" >packages/db/.env
   echo "✅ Generated: packages/db/.env"
 fi
@@ -127,5 +135,5 @@ else
 fi
 
 echo "---------------------------------------------------"
-echo "🚀 Setup Complete!"
+echo "🚀 Setup Complete! .env files contain your config."
 echo "---------------------------------------------------"

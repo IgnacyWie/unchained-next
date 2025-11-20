@@ -124,7 +124,7 @@ We are actively working on standardizing the deployment pipeline. Help is welcom
 
 ### Configuration & Standards
 
-- [ ] **Standardize `IMAGE_NAME`:** Update `.env` templates and `k8s` manifests to use a consistent variable for the Docker image name/tag to prevent mismatches during build/deploy.
+- [x] **Standardize `IMAGE_NAME`:** Update `.env` templates and `k8s` manifests to use a consistent variable for the Docker image name/tag to prevent mismatches during build/deploy.
 
 ### Documentation
 
