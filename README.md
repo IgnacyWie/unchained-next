@@ -124,7 +124,7 @@ We are actively working on standardizing the deployment pipeline. Help is welcom
 
 ### Authentication
 
-- [] Integrate WebAuthn (Passkeys) as an additional provider in NextAuth.js
+- [ ] Integrate WebAuthn (Passkeys) as an additional provider in NextAuth.js
 
 ### Configuration & Standards
 
@@ -141,6 +141,7 @@ We are actively working on standardizing the deployment pipeline. Help is welcom
   1. Builds the Next.js Docker image (using Turbo cache).
   2. Pushes to GHCR or Docker Hub.
   3. Triggers a rollout restart on the Kubernetes cluster.
+- [ ] **GitHub Actions:** Create a workflow that automatically runs the prisma db push command on the cluster database
 
 ## 🚢 Production Deployment (Kubernetes)
 
