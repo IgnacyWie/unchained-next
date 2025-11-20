@@ -1,54 +1,68 @@
-# Use Node 20-alpine (LTS) for best stability with Prisma
+# Use Node 20-alpine for best size/performance
 FROM node:20-alpine AS base
 
 # ---------------------------------------------------------
-# 1. Prune: Scope the workspace to just this app
+# 1. PRUNE: Scope the workspace to just this app
 # ---------------------------------------------------------
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 RUN npm install turbo --global
 
-# Copy the entire monorepo context
 COPY . .
 
-# Prune dependencies (Generates 'out' folder with only needed packages)
-# Ensure the scope matches your package.json name (e.g. @repo/web or web)
+# ✂️ PRUNE: Slices the monorepo to only what 'web' needs
+# Ensure '--scope=web' matches the "name" in apps/web/package.json
 RUN turbo prune --scope=web --docker
 
 # ---------------------------------------------------------
-# 2. Install & Build
+# 2. INSTALL: The Speed Layer (Fetch + Cache Mounts)
 # ---------------------------------------------------------
 FROM base AS installer
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Install pnpm globally
+RUN npm install -g pnpm
 RUN corepack enable
 
-# Copy lockfile and package.json's from pruned output
-COPY .gitignore .gitignore
+# 📂 COPY METADATA FIRST
+# We copy *only* package.json's and the lockfile. 
+# If your source code changes but deps don't, this layer is cached!
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 
-# Install deps
-RUN pnpm install
+# 🚀 SPEED HACK 1: pnpm fetch + Cache Mount
+# - This reads the lockfile and downloads packages to a virtual store.
+# - The '--mount' tells Docker/OrbStack: "Keep this folder safe on my hard drive!"
+# - If you rebuild, it reuses these files instantly.
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm config set store-dir /pnpm/store && \
+  pnpm fetch
 
-# Copy source code from pruned output
+# 🚀 SPEED HACK 2: Install from Offline Store
+# - We install using the files we just fetched.
+# - '--offline' ensures we don't touch the internet.
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm install -r --offline --frozen-lockfile
+
+# 📂 COPY SOURCE CODE
+# Now we copy the actual code. This invalidates cache often, 
+# but the heavy install steps above are already done.
 COPY --from=builder /app/out/full/ .
 
-# Generate Prisma Client
-# We do this explicitly to ensure the binary is compatible with Alpine
+# 🛠️ PRISMA GENERATE
 WORKDIR /app/packages/db
 RUN pnpm exec prisma generate
 WORKDIR /app
 
-# Build the project
+# 🏗️ BUILD
 RUN pnpm turbo run build --filter=web...
 
 # ---------------------------------------------------------
-# 3. Production Runner
+# 3. RUNNER: Production Image
 # ---------------------------------------------------------
 FROM base AS runner
-RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -58,8 +72,7 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy public assets and standalone server
-# Note: Standalone output typically preserves the 'apps/web' directory structure
+# Copy the Standalone build from the installer stage
 COPY --from=installer --chown=nextjs:nextjs /app/apps/web/.next/standalone ./
 COPY --from=installer --chown=nextjs:nextjs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=installer --chown=nextjs:nextjs /app/apps/web/public ./apps/web/public

@@ -1,0 +1,30 @@
+# See https://github.com/vercel/next.js/blob/canary/examples/with-docker/.dockerignore
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js build output
+.next
+out
+
+# Production
+build
+dist
+
+# System files
+.DS_Store
+*.pem
+
+# Version control
+.git
+.gitignore
+
+# Environment variables (Don't bake secrets into images!)
+.env
+.env*.local
+.env.production
+.env.development
+
+# Turbo
+.turbo

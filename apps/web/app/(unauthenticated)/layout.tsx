@@ -21,11 +21,9 @@ const AuthLayout = ({ children }: AuthLayoutProps) => (
       <div className="relative z-20 mt-auto text-primary">
         <blockquote className="space-y-2">
           <p className="text-lg">
-            &ldquo;This library has saved me countless hours of work and helped
-            me deliver stunning designs to my clients faster than ever
-            before.&rdquo;
+            &ldquo;I was sick of paying per-user fees for simple auth and databases. This stack saved me thousands in yearly SaaS costs and countless hours of DevOps headaches. It’s the freedom I was looking for.&rdquo;
           </p>
-          <footer className="text-sm">Sofia Davis</footer>
+          <footer className="text-sm">Ignacy Wielogorski</footer>
         </blockquote>
       </div>
     </div>
