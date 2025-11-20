@@ -1,0 +1,164 @@
+name: Deploy to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+env:
+  DOCKER_IMAGE_NAME: ignacywie/unchained-web
+  HELM_RELEASE_NAME: first
+  HELM_CHART_PATH: ./ops/helm/unchained-web
+  KUBERNETES_NAMESPACE: default
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # 4. Generate image tag (using git SHA)
+      - name: Generate image tag
+        id: image_tag
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          IMAGE_TAG="${SHORT_SHA}-$(date +%s)"
+          echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "full_image=${DOCKER_IMAGE_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "latest_image=${DOCKER_IMAGE_NAME}:latest" >> $GITHUB_OUTPUT
+
+      # 5. Build and push Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image_tag.outputs.full_image }}
+            ${{ steps.image_tag.outputs.latest_image }}
+          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
+
+      # 6. Set up kubectl
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.28.0"
+
+      # 7. Configure kubectl with kubeconfig
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      # 8. Verify cluster connection
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      # 9. Set up Helm
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.13.0"
+
+      # 10. Create Helm values file from secrets
+      - name: Create Helm values file
+        run: |
+          cat << EOF > ${{ env.HELM_CHART_PATH }}/values.prod.yaml
+          web:
+            replicaCount: 2
+            image:
+              repository: ${{ env.DOCKER_IMAGE_NAME }}
+              tag: ${{ steps.image_tag.outputs.tag }}
+              pullPolicy: Always
+            service:
+              type: ClusterIP
+              port: 80
+              targetPort: 3000
+            env:
+              nodeEnv: production
+
+          postgres:
+            image:
+              repository: postgres
+              tag: 15-alpine
+            storage:
+              size: 1Gi
+            service:
+              port: 5432
+
+          secrets:
+            postgresUser: "${{ secrets.POSTGRES_USER }}"
+            postgresPassword: "${{ secrets.POSTGRES_PASSWORD }}"
+            postgresDb: "${{ secrets.POSTGRES_DB }}"
+            nextAuthSecret: "${{ secrets.NEXTAUTH_SECRET }}"
+            nextAuthUrl: "${{ secrets.NEXTAUTH_URL }}"
+            aws:
+              region: "${{ secrets.AWS_REGION }}"
+              smtpUser: "${{ secrets.AWS_SMTP_USER }}"
+              smtpPass: "${{ secrets.AWS_SMTP_PASS }}"
+
+          ingress:
+            enabled: true
+            host: ${{ secrets.INGRESS_HOST }}
+            tls:
+              clusterIssuer: acme-issuer
+          EOF
+
+      # 11. Deploy with Helm
+      - name: Deploy to Kubernetes
+        run: |
+          helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
+            -f ${{ env.HELM_CHART_PATH }}/values.prod.yaml \
+            -n ${{ env.KUBERNETES_NAMESPACE }} \
+            --create-namespace \
+            --wait \
+            --timeout 5m \
+            --atomic
+
+      # 12. Verify deployment
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/${{ env.HELM_RELEASE_NAME }}-web -n ${{ env.KUBERNETES_NAMESPACE }}
+          kubectl get pods -n ${{ env.KUBERNETES_NAMESPACE }} -l component=web
+
+      # 13. Get deployment info
+      - name: Get deployment info
+        if: success()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ steps.image_tag.outputs.full_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release**: ${{ env.HELM_RELEASE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Namespace**: ${{ env.KUBERNETES_NAMESPACE }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pods Status" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ env.KUBERNETES_NAMESPACE }} >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # 14. Rollback on failure
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back..."
+          helm rollback ${{ env.HELM_RELEASE_NAME }} -n ${{ env.KUBERNETES_NAMESPACE }}
