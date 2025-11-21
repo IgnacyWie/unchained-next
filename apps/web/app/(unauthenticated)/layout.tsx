@@ -1,6 +1,6 @@
 import { ModeToggle } from "@repo/design-system/components/mode-toggle";
 import { Suspense } from 'react';
-import { TriangleIcon } from "lucide-react";
+import { TriangleDashedIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 // 1. Add these imports for server-side session checking
@@ -43,7 +43,7 @@ const AuthLayout = async ({ children }: AuthLayoutProps) => {
       {/* --- ABSOLUTE UI ELEMENTS (Corners) --- */}
 
       <div className="absolute top-8 left-8 z-20 flex items-center font-medium text-lg text-black dark:text-white">
-        <TriangleIcon className="mr-2 h-6 w-6" />
+        <TriangleDashedIcon className="mr-2 h-6 w-6" />
         Unchained Next
       </div>
 
